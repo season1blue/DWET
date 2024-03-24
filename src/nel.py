@@ -101,7 +101,7 @@ class NELModel(nn.Module):
         # Dimension reduction
         self.pedia_out_trans = nn.Sequential(
             nn.Dropout(self.dropout),
-            nn.Linear(self.hidden_size * 4, self.output_size),
+            nn.Linear(self.hidden_size * 5, self.output_size),
         )
         self.img_att = nn.MultiheadAttention(self.hidden_size, args.nheaders, batch_first=True)
 
@@ -143,8 +143,9 @@ class NELModel(nn.Module):
 
         segement_att, _ = self.img_att(mention_trans, segement_trans, segement_trans)
         profile_att, _ = self.img_att(mention_trans, profile_trans, profile_trans)
-
-        query = torch.cat([text_trans, total_trans, mention_trans, segement_att], dim=-1)
+        identity_att, _ = self.img_att(mention_trans, identity, identity)
+        
+        query = torch.cat([text_trans, total_trans, mention_trans, segement_att, identity_att], dim=-1)
         query = self.pedia_out_trans(query).squeeze(1)
 
         coarsegraied_loss = self.clip_loss(total_trans, text_trans, batch_size)
