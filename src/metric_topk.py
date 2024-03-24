@@ -1,7 +1,7 @@
 """
     top-k metric
 """
-from circle_loss import cosine_similarity, dot_similarity
+from src.circle_loss import cosine_similarity, dot_similarity
 import faiss
 import faiss.contrib.torch_utils
 import numpy as np

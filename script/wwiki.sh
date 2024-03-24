@@ -46,7 +46,8 @@ export SEED=114514
 
 
 
-python $DIR_CODE/train.py --dir_prepro $DIR_PREPRO \
+python ../train.py \
+--data_dir $DIR_PREPRO \
 --path_ans_list $PATH_ANS \
 --dir_img_feat $DIR_PREPRO \
 --dir_neg_feat $DIR_PREPRO \
@@ -84,4 +85,4 @@ python $DIR_CODE/train.py --dir_prepro $DIR_PREPRO \
 --dataset $DATASET \
 --img_path $IMG_PATH \
 --gt_type $GT_TYPE \
-#--overwrite_cache $OVERWRITE
+# --overwrite_cache $OVERWRITE

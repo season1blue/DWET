@@ -8,12 +8,13 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 import clip
 from tqdm import tqdm
 
-from mlip.clip import load as clip_load
-from mlip.clip import tokenize as clip_tokenize
+
+from src.mlip.clip import load as clip_load
+from src.mlip.clip import tokenize as clip_tokenize
 from pixellib.torchbackend.instance import instanceSegmentation
 
 import warnings
-from args import parse_arg
+from src.args import parse_arg
 
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
@@ -45,9 +46,8 @@ class InputFeatures:
 
 
 class Richpedia():
-    def __init__(self):
+    def __init__(self, args):
         super(Richpedia, self).__init__()
-        args = parse_arg()
         self.args = args
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -113,15 +113,15 @@ class Richpedia():
             image_list.append(image)
         return image_list
 
-    def convert_examples_to_features(self, examples):
+    def clip_feature(self, examples):
         features = []
         for (ex_index, example) in tqdm(enumerate(examples), total=len(examples), ncols=80):
 
             # Text
             input_sent = example.mentions + " [SEP] " + example.sent
-            sent_ids, _ = clip_tokenize(input_sent, truncate=True)  # 截断过长的
+            sent_ids = clip_tokenize(input_sent, truncate=True)  # 截断过长的
             sent_ids = sent_ids.to(self.device)
-            mention, _ = clip_tokenize(example.mentions, truncate=True)
+            mention = clip_tokenize(example.mentions, truncate=True)
             mention = mention.to(self.device)
             with torch.no_grad():
                 self.model.to(self.device)
@@ -132,13 +132,15 @@ class Richpedia():
             image_features = []
             with torch.no_grad():
                 for img_name in example.img_list:
-                    img_path = os.path.join(self.img_path, img_name)
-                    image = Image.open(img_path)
-                    image = self.preprocess(image)
-                    image = image.unsqueeze(0).to(self.device)
-                    split_feature = self.model.encode_image(image).to(self.device)
-                    image_features.append(split_feature)
-
+                    try:
+                        img_path = os.path.join(self.img_path, "richpedia", "images", img_name)
+                        image = Image.open(img_path)
+                        image = self.preprocess(image)
+                        image = image.unsqueeze(0).to(self.device)
+                        split_feature = self.model.encode_image(image).to(self.device)
+                        image_features.append(split_feature)
+                    except Exception as e:
+                        print(img_name)
                 if len(image_features) == 0:
                     image_features = torch.zeros(1, 512).to(self.device)
                 else:

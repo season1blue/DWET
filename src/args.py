@@ -22,7 +22,7 @@ def parse_arg():
 
 
     parser.add_argument(
-        "--dir_prepro",
+        "--data_dir",
         default=None,
         type=str,
         required=True,

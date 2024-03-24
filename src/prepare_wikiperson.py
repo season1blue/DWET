@@ -6,12 +6,12 @@ from PIL import Image
 import clip
 from tqdm import tqdm
 
-from mlip.clip import load as clip_load
-from mlip.clip import tokenize as clip_tokenize
+from src.mlip.clip import load as clip_load
+from src.mlip.clip import tokenize as clip_tokenize
 from pixellib.torchbackend.instance import instanceSegmentation
 
 import warnings
-from args import parse_arg
+from src.args import parse_arg
 
 
 class InputExample(object):

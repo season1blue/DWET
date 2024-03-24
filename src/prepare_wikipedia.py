@@ -6,12 +6,9 @@ from PIL import Image
 import clip
 from tqdm import tqdm
 
-from mlip.clip import load as clip_load
-from mlip.clip import tokenize as clip_tokenize
+from clip import load as clip_load
+from clip import tokenize as clip_tokenize
 from pixellib.torchbackend.instance import instanceSegmentation
-
-import warnings
-from args import parse_arg
 
 
 class InputExample(object):
@@ -44,9 +41,8 @@ class InputFeatures:
 
 
 class Wikipedia():
-    def __init__(self):
+    def __init__(self, args):
         super(Wikipedia, self).__init__()
-        args = parse_arg()
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"  # If using GPU then use mixed precision training.
         model_path = os.path.join(args.pretrain_model_path, "ViT-B-32.pt")
@@ -63,9 +59,9 @@ class Wikipedia():
         self.ins = instanceSegmentation()
         self.ins.load_model(args.seg_model_path)
         self.target_classes = self.ins.select_target_classes(person=True)
-        self.detection_path = os.path.join(args.dir_prepro, "wiki_detection")
-        self.segement_path = os.path.join(args.dir_prepro, "wiki_segement")
-        self.total2part_map = json.load(open(os.path.join(args.dir_prepro, "total2part_map.json"), 'r'))
+        self.detection_path = os.path.join(args.data_dir, "wiki_detection")
+        self.segement_path = os.path.join(args.data_dir, "wiki_segement")
+        self.total2part_map = json.load(open(os.path.join(args.data_dir, "total2part_map.json"), 'r'))
 
     def read_examples_from_file(self, data_dir, mode):
         file_path = os.path.join(data_dir, "{}.json".format(mode))
@@ -107,7 +103,7 @@ class Wikipedia():
             image_list.append(image)
         return image_list
 
-    def convert_examples_to_features(self, examples):
+    def clip_feature(self, examples):
         features = []
         for (ex_index, example) in tqdm(enumerate(examples), total=len(examples), ncols=80):
             self.model.to(self.device)
@@ -126,7 +122,7 @@ class Wikipedia():
                 total_image = self.preprocess(Image.open(img_path)).unsqueeze(0).to(self.device)
                 total_feature = self.model.encode_image(total_image)
 
-                if img_id not in self.total2part_map:
+                if img_id not in self.total2part_map or True:
                     segement_features = torch.zeros_like(text_feature)
                     profile_features = torch.zeros_like(text_feature)
                 else:

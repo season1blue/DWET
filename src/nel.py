@@ -7,8 +7,8 @@ import numpy as np
 # from sent_level import SentLevel
 # from gated_fuse import GatedFusion
 # from recursive_encoder import RecursiveEncoder
-from circle_loss import CircleLoss
-from triplet_loss import TripletMarginLoss, NpairLoss
+from src.circle_loss import CircleLoss
+from src.triplet_loss import TripletMarginLoss, NpairLoss
 
 
 def Contrastive_loss(out_1, out_2, batch_size, temperature=0.5):
@@ -119,7 +119,7 @@ class NELModel(nn.Module):
             self.clip_loss = ClipLoss(args)
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
 
-    def forward(self, model_type, mention=None, text=None, total=None, segement=None, profile=None, pos_feats=None, neg_feats=None):
+    def forward(self, mention=None, text=None, total=None, segement=None, profile=None, pos_feats=None, neg_feats=None, identity=None):
         """
             ------------------------------------------
             Args:
@@ -144,7 +144,7 @@ class NELModel(nn.Module):
         segement_att, _ = self.img_att(mention_trans, segement_trans, segement_trans)
         profile_att, _ = self.img_att(mention_trans, profile_trans, profile_trans)
 
-        query = torch.cat([text_trans, total_trans, mention_trans, profile_att], dim=-1)
+        query = torch.cat([text_trans, total_trans, mention_trans, segement_att], dim=-1)
         query = self.pedia_out_trans(query).squeeze(1)
 
         coarsegraied_loss = self.clip_loss(total_trans, text_trans, batch_size)
