@@ -10,34 +10,7 @@ from clip import load as clip_load
 from clip import tokenize as clip_tokenize
 from pixellib.torchbackend.instance import instanceSegmentation
 
-
-class InputExample(object):
-    """A single training/test example for token classification."""
-
-    def __init__(self, guk, sent, idx, answer=None, mentions=None, img_path=None):
-        """Constructs a InputExample.
-        Args:
-        """
-        self.guk = guk  # The unique id of each example, generally composed of mode-key
-        self.sent = sent  # Sample text information
-        self.img_id = idx  # The original id of the sample, used to retrieve the image
-        self.answer = answer  # The answer information corresponding to the sample, that is, the id of the database instance
-        self.mentions = mentions  # Reference information in the sample
-        self.img_path = img_path
-
-
-class InputFeatures:
-    def __init__(self, answer_id, img_id, mentions, key_id, text_feature, mention_feature, total_feature,
-                 segement_feature, profile_feature):
-        self.answer_id = answer_id
-        self.img_id = img_id
-        self.mentions = mentions
-        self.key_id = key_id
-        self.text_feature = text_feature
-        self.mention_feature = mention_feature
-        self.total_feature = total_feature
-        self.segement_feature = segement_feature
-        self.profile_feature = profile_feature
+from src.input_format import InputExample, InputFeatures
 
 
 class Wikipedia():
@@ -122,11 +95,12 @@ class Wikipedia():
                 total_image = self.preprocess(Image.open(img_path)).unsqueeze(0).to(self.device)
                 total_feature = self.model.encode_image(total_image)
 
-                if img_id not in self.total2part_map or True:
-                    segement_features = torch.zeros_like(text_feature)
-                    profile_features = torch.zeros_like(text_feature)
+                if img_id not in self.total2part_map:
+                    segement_feature = torch.zeros_like(text_feature)
+                    profile_feature = torch.zeros_like(text_feature)
+                    identity_feature = torch.zeros_like(text_feature)
                 else:
-                    segement_list, profile_list = [], []
+                    segement_list, profile_list, identity_list = [], [], []
                     for part in self.total2part_map[img_id]:
                         # segement image feature extraction
                         segement_path = os.path.join(self.segement_path, part + ".jpg")
@@ -136,30 +110,44 @@ class Wikipedia():
 
                         # detection profile feature extraction
                         detection_path = os.path.join(self.detection_path, part + ".json")
-                        detection_context = json.load(open(detection_path, 'r'))[0]
-                        gender, race, age, emotion = detection_context['dominant_gender'], detection_context[
-                            'dominant_race'], detection_context['age'], detection_context['dominant_emotion']
-                        profile = "gender: {}, race: {}, age: {}, emotion: {}".format(gender, race, age, emotion)
-                        profile = clip_tokenize(profile, truncate=True).to(self.device)
-                        profile_feature = self.model.encode_text(profile)
-                        profile_list.append(profile_feature)
+                        facial_context = json.load(open(detection_path, 'r'))[0]
+                        
+                        if "dominant_gender" not in facial_context.keys():
+                            profile_list.append(torch.zeros_like(text_feature))
+                        else:
+                            gender, race, age, emotion = facial_context['dominant_gender'], facial_context['dominant_race'], facial_context['age'], facial_context['dominant_emotion']
+                            profile = "gender: {}, race: {}, age: {}, emotion: {}".format(gender, race, age, emotion)
+                            profile = clip_tokenize(profile, truncate=True).to(self.device)
+                            profile_feature = self.model.encode_text(profile)
+                            profile_list.append(profile_feature)
+                        
+                        
+                        identity = json.load(open(detection_path, 'r'))
+                        i_result = []
+                        for i in identity:
+                            if 'score' in i.keys() and i['score'] > 0.5:
+                                i_result.append(i['label'])
+                        identity = ", ".join(i_result)
+                        identity = clip_tokenize(identity, truncate=True).to(self.device)
+                        identity_feature = self.model.encode_text(identity) if len(i_result)!=0 else torch.zeros_like(text_feature)   
+                        identity_list.append(identity_feature)
 
-                    segement_features = torch.cat(segement_list, dim=0)
-                    profile_features = torch.cat(profile_list, dim=0)
+                    segement_feature = torch.cat(segement_list, dim=0)
+                    profile_feature = torch.cat(profile_list, dim=0)
+                    identity_feature = torch.cat(identity_list, dim=0)
 
             answer_id = example.answer if example.answer else -1
 
             features.append(
                 InputFeatures(
-                    answer_id=answer_id,
-                    img_id=example.img_id,
+                    answer_id=example.answer if example.answer else -1,
                     mentions=example.mentions,
-                    key_id=example.guk,
                     text_feature=text_feature,
                     mention_feature=mention_feature,
                     total_feature=total_feature,
-                    segement_feature=segement_features,
-                    profile_feature=profile_features,
+                    segement_feature=segement_feature,
+                    profile_feature=profile_feature,
+                    identity_feature=identity_feature
                 )
             )
         return features
