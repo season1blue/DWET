@@ -161,7 +161,7 @@ class NELModel(nn.Module):
         # 注意这里的维度，如果不满足TripletMarginLoss的维度设置，会存在broadcast现象，导致性能大幅下降 全都要是 [bsz*hs]
         triplet_loss = self.loss(query, pos_feats.squeeze(1), neg_feats.squeeze(1))
 
-        loss = triplet_loss + coarsegraied_loss
+        loss = triplet_loss + coarsegraied_loss +finegraied_loss
 
         return loss, query
 
