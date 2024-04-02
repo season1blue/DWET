@@ -1,1 +1,1 @@
-使用deepface提取profile侧写。文件主要写在app.py中
+We are currently organizing the README document and data. Detailed configurations will be released soon.
