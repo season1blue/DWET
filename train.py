@@ -59,6 +59,9 @@ def set_seed(args):
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(args.seed)
+        torch.cuda.manual_seed_all(args.seed)
 
 
 
@@ -71,7 +74,7 @@ def load_and_cache_examples(args, mode, dataset="wiki", logger=None):
 
     data_processor_mapping = {"wiki": Wikipedia, "rich": Richpedia, "person" : Wikiperson}
     if mode != 'test' and os.path.exists(cached_features_file) and not args.overwrite_cache:
-        features = torch.load(cached_features_file, map_location='cuda:0')
+        features = torch.load(cached_features_file)
     else:
         data_processor = data_processor_mapping[dataset](args)
         logger.info("Creating features %s at %s" % (cached_features_file, args.data_dir))
@@ -348,8 +351,8 @@ def evaluate(args, nel_model, mode):
     all_ranks = np.array(all_ranks)
     results = {
         "top1": int(sum(all_ranks <= 1)) / len(eval_dataset),
-        "top5": int(sum(all_ranks <= 5)) / len(eval_dataset),
-        "top10": int(sum(all_ranks <= 10)) / len(eval_dataset),
+        "top5": int(sum(all_ranks <= 3)) / len(eval_dataset),
+        "top10": int(sum(all_ranks <= 5)) / len(eval_dataset),
         "top20": int(sum(all_ranks <= 20)) / len(eval_dataset),
     }
 

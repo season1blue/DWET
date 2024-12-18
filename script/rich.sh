@@ -80,4 +80,4 @@ python ../train.py --data_dir $DIR_PREPRO \
 --dataset $DATASET \
 --img_path $IMG_PATH \
 --gt_type $GT_TYPE \
---overwrite_cache
+# --overwrite_cache

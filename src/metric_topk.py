@@ -2,26 +2,10 @@
     top-k metric
 """
 from src.circle_loss import cosine_similarity, dot_similarity
-import faiss
-import faiss.contrib.torch_utils
 import numpy as np
 import torch
 
 
-def faiss_cal_topk(args, query, answer_list, entity_features):
-    answer_list = answer_list.cpu()  # answer_entity在entity_list中的index
-    query = query.cpu()
-    index = faiss.IndexFlatL2(args.hidden_size)
-    index.add(entity_features)
-    k = 50
-    _, search_res = index.search(query, k)  # query与所有的entity做相似，按照相似度降序排列的entity_id
-    rank_list = []
-    for index, answer in enumerate(answer_list):
-        rank = torch.nonzero(search_res[index] == answer).squeeze(-1)  # answer_entity是否在topk个相似列表里
-        rank = rank.item() if rank.size(0) else k  # k代表不在
-        rank_list.append(rank)
-
-    return rank_list
 
 def cal_top_k(args, query, pos_feats, search_feats):
     """

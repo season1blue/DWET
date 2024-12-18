@@ -16,6 +16,9 @@ import os
 
 from os.path import join, exists
 
+from sklearn.metrics.pairwise import cosine_similarity
+
+
 INAME_PATTERN = re.compile("(\d+)\.")
 num_sample = 0
 
@@ -72,8 +75,18 @@ class NELDataset(Dataset):
         if self.contain_search_res:
             qids_searched = self.search_res[feature.mentions]
             qids_searched_map = [self.neg_mapping[qid] for qid in qids_searched]
-            sample["search_res"] = torch.tensor(np.array([self.entity_features[qsm] for qsm in qids_searched_map]))
+            candidate_feature = np.array([self.entity_features[qsm] for qsm in qids_searched_map])
+
+            # 计算 mention_feature 与 search_res 之间的余弦相似度
+            similarities = cosine_similarity(sample["mention_feature"].cpu().numpy(), candidate_feature)  # 得到一个 (1, 100) 的相似度矩阵
+            # 获取前 9 个最相似的索引（不包括第一个，即不算 search_res[0]）
+            top_indices = similarities[0].argsort()[-30:][::-1]  # 按照相似度从大到小排序，取出前 10 个
+            # top_indices = top_indices[top_indices != 0]  # 移除第一个元素（即第一个 search_res）
+            # 将 search_res[0] 加入最相似的 9 个向量
+            sample["search_res"] = np.vstack([candidate_feature[0], candidate_feature[top_indices]])  # 将第一个和最相似的 9 个向量拼接起来            
+            sample["search_res"] = torch.tensor(sample["search_res"])
             # print(sample["search_res"].size())  #Bathc_size*hidden_size 32*768
+            # sample["search_res"] = candidate_feature
         return sample
 
 

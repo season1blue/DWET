@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 
 export DIR_CODE="../nel_model"
 
@@ -45,9 +45,7 @@ export GPU=0
 export SEED=114514
 
 
-
-python ../train.py \
---data_dir $DIR_PREPRO \
+python ../train.py --data_dir $DIR_PREPRO \
 --path_ans_list $PATH_ANS \
 --dir_img_feat $DIR_PREPRO \
 --dir_neg_feat $DIR_PREPRO \

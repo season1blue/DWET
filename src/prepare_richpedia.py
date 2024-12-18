@@ -15,34 +15,11 @@ from pixellib.torchbackend.instance import instanceSegmentation
 
 import warnings
 from src.args import parse_arg
+from src.input_format import InputExample, InputFeatures
 
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
 
-
-class InputExample(object):
-    def __init__(self, guk, sent, idx, answer=None, mentions=None, img_list=None):
-        self.guk = guk  # The unique id of each example, generally composed of mode-key
-        self.sent = sent  # Sample text information
-        self.img_id = idx  # The original id of the sample, used to retrieve the image
-        self.answer = answer  # The answer information corresponding to the sample, that is, the id of the database instance
-        self.mentions = mentions  # Reference information in the sample
-        self.img_list = img_list
-
-
-class InputFeatures:
-    """A single training/test example for token classification."""
-
-    def __init__(self, answer_id, img_id, mentions, key_id, text_feature, image_feature, mention_feature,
-                 total_image_feature):
-        self.answer_id = answer_id
-        self.img_id = img_id
-        self.mentions = mentions
-        self.key_id = key_id
-        self.text_feature = text_feature
-        self.image_feature = image_feature
-        self.mention_feature = mention_feature
-        self.total_image_feature = total_image_feature
 
 
 class Richpedia():
@@ -88,7 +65,7 @@ class Richpedia():
                     idx=k,  # v["id"]
                     answer=v["answer"],  # v["answer"]
                     mentions=v["mentions"],
-                    img_list=img_list
+                    img_path=img_list
                 )
             )
         return examples
@@ -116,7 +93,6 @@ class Richpedia():
     def clip_feature(self, examples):
         features = []
         for (ex_index, example) in tqdm(enumerate(examples), total=len(examples), ncols=80):
-
             # Text
             input_sent = example.mentions + " [SEP] " + example.sent
             sent_ids = clip_tokenize(input_sent, truncate=True)  # 截断过长的
@@ -131,7 +107,7 @@ class Richpedia():
             # Image
             image_features = []
             with torch.no_grad():
-                for img_name in example.img_list:
+                for img_name in example.img_path:
                     try:
                         img_path = os.path.join(self.img_path, "richpedia", "images", img_name)
                         image = Image.open(img_path)
@@ -140,7 +116,7 @@ class Richpedia():
                         split_feature = self.model.encode_image(image).to(self.device)
                         image_features.append(split_feature)
                     except Exception as e:
-                        print(img_name)
+                        print(e, img_name)
                 if len(image_features) == 0:
                     image_features = torch.zeros(1, 512).to(self.device)
                 else:
@@ -154,21 +130,17 @@ class Richpedia():
             else:
                 answer_id = -1
 
-            if ex_index < 5:
-                logger.info("*** Example ***")
-                logger.info("guid: %s", example.guk)
-                logger.info("answer_id: %s", answer_id)
 
             features.append(
                 InputFeatures(
                     answer_id=answer_id,
-                    img_id=example.img_id,
                     mentions=example.mentions,
-                    key_id=example.guk,
                     text_feature=text_feature,
-                    image_feature=image_features,
                     mention_feature=mention_feature,
-                    total_image_feature=total_image_feature
+                    segement_feature=image_features,
+                    total_feature=total_image_feature,
+                    profile_feature=image_features,
+                    identity_feature =image_features
                 )
             )
         return features

@@ -117,6 +117,8 @@ class NELModel(nn.Module):
             # self.loss = TripletMarginLoss(margin=self.loss_margin, p=self.loss_p)
             self.loss = NpairLoss(args)
             self.clip_loss = ClipLoss(args)
+
+        
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
 
     def forward(self, mention=None, text=None, total=None, segement=None, profile=None, pos_feats=None, neg_feats=None, identity=None):
@@ -138,12 +140,13 @@ class NELModel(nn.Module):
         mention_trans = self.text_trans(mention)
         text_trans = self.text_trans(text)
         profile_trans = self.text_trans(profile).max(dim=1)[0].unsqueeze(1)
+        identity_trans = self.text_trans(identity).max(dim=1)[0].unsqueeze(1)
         segement_trans = self.img_trans(segement)
         total_trans = self.img_trans(total)
 
         segement_att, _ = self.img_att(mention_trans, segement_trans, segement_trans)
         profile_att, _ = self.img_att(mention_trans, profile_trans, profile_trans)
-        identity_att, _ = self.img_att(mention_trans, identity, identity)
+        identity_att, _ = self.img_att(mention_trans, identity_trans, identity_trans)
         
         query = torch.cat([text_trans, total_trans, mention_trans, segement_att, identity_att], dim=-1)
         query = self.pedia_out_trans(query).squeeze(1)
@@ -161,7 +164,7 @@ class NELModel(nn.Module):
         # 注意这里的维度，如果不满足TripletMarginLoss的维度设置，会存在broadcast现象，导致性能大幅下降 全都要是 [bsz*hs]
         triplet_loss = self.loss(query, pos_feats.squeeze(1), neg_feats.squeeze(1))
 
-        loss = triplet_loss + coarsegraied_loss +finegraied_loss
+        loss = triplet_loss + finegraied_loss
 
         return loss, query
 
